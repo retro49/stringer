@@ -21,6 +21,7 @@ pub struct Args {
     pub output: Option<String>,
     /// input file or . for directory
     pub input: Option<String>,
+    pub split: Option<u64>,
 }
 
 impl Args {
@@ -53,6 +54,14 @@ impl Args {
                     .default_value("false")
                     .required(false)
                     .value_parser(clap::value_parser!(bool)),
+            )
+            .arg(
+                clap::Arg::new("split")
+                .short('S')
+                .long("split")
+                .required(false)
+                .default_value("0")
+                .value_parser(clap::value_parser!(u64))
             )
             .arg(
                 clap::Arg::new("whitespace")
@@ -123,6 +132,7 @@ impl Args {
         Ok(Args {
             window_min_size: cmd.get_one::<u64>("min").copied(),
             window_max_size: cmd.get_one::<u64>("max").copied(),
+            split: cmd.get_one::<u64>("split").copied(),
             special: cmd.get_one::<bool>("special").copied(),
             whitespace: cmd.get_one::<bool>("whitespace").copied(),
             output_format: match cmd.get_one::<String>("format") {

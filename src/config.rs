@@ -22,6 +22,8 @@ const REGEX: Option<regex::Regex> = None;
 /// By default does not treats LF CR as a 
 /// valid character in the extraction process
 const LINE_INCLUDE: bool = false;
+/// Default split option, no splitting
+const SPLIT: u64 = 0;
 
 /// StringerConfig
 /// This structure specifies the configuration
@@ -43,6 +45,8 @@ pub struct StringerConfig {
     pub output_format: OutputFormat,
     /// @length: include the size of the string length in the output
     pub length: bool,
+    /// splits every string extracted into split capacity
+    pub split: u64,
     /// @regex: regex pattern for matching, optional.
     pub regex: Option<regex::Regex>,
     /// @line_include: treats 0x0a LINE FEED, 0x0d CR as a string
@@ -61,6 +65,7 @@ impl Default for StringerConfig {
             length: LENGTH,
             regex: REGEX,
             line_include: LINE_INCLUDE,
+            split: SPLIT,
         }
     }
 }
@@ -106,6 +111,11 @@ impl StringerConfig {
         self.line_include = opt;
     }
 
+    /// splits the provided string into segments
+    pub fn split(self: &mut Self, opt: u64) {
+        self.split = opt;
+    }
+
     /// set regex expression
     pub fn regex(self: &mut Self, opt: String) -> Result<(), crate::error::StringerError> {
         let reg = regex::Regex::new(&opt);
@@ -142,12 +152,12 @@ impl From<crate::args::Args> for StringerConfig {
 
         conf.special_include(match value.special {
             Some(s) => s,
-            None => SPECIAL_INCLUDE,
+            _ => SPECIAL_INCLUDE,
         });
 
         conf.whitespace_include(match value.whitespace {
             Some(w) => w,
-            None => WHITESPACE_INCLUDE,
+            _ => WHITESPACE_INCLUDE,
         });
 
         conf.length_include(match value.length {
@@ -157,7 +167,12 @@ impl From<crate::args::Args> for StringerConfig {
 
         conf.line_include(match value.line_include {
             Some(l) => { l },
-            None => LINE_INCLUDE
+            _ => LINE_INCLUDE
+        });
+
+        conf.split(match value.split{
+            Some(s) => {s}
+            _ => { SPLIT }
         });
 
         conf.output_format = match value.output_format {
@@ -167,7 +182,7 @@ impl From<crate::args::Args> for StringerConfig {
                 "xml" => OutputFormat::XML,
                 _ => OutputFormat::Literal,
             },
-            None => OUTPUTFORMAT,
+            _ => OUTPUTFORMAT,
         };
 
         conf.regex = match value.regex {

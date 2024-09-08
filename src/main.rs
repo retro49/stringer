@@ -1,6 +1,6 @@
 extern crate stringer;
 
-fn stringer_file(path: String, conf: stringer::config::StringerConfig, _out: Option<String>) {
+fn stringer_file(path: String, conf: stringer::config::StringerConfig, out: Option<String>) {
     let file = std::fs::File::open(path);
     match file {
         Ok(f) => {

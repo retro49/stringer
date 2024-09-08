@@ -3,7 +3,7 @@ pub mod config;
 pub mod error;
 
 use std::io::Read;
-use serde::ser::{Serialize, Serializer, SerializeStruct};
+use serde::ser::{Serialize, SerializeStruct};
 
 /// Stringer
 /// The main structure that is used to extract
@@ -29,7 +29,7 @@ pub struct Stringer {
 /// A result type where the extracted string and length of
 /// the string is stored if needed
 // #[derive(Serialize, Deserialize, Debug)]
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct StringerResult {
     /// the String that is extracted
     string: std::ffi::CString,
@@ -159,12 +159,12 @@ impl<'a> Stringer {
 
         let mut buff: Vec<u8> = Vec::<u8>::new();
 
-        if (self.config.window_max_size < self.config.window_min_size) ||
-            self.config.window_max_size == 0 {
+        if self.config.split == 0 {
             loop {
                 if !self.should_read() {
                     break;
                 }
+
                 if self.end {
                     break;
                 }
@@ -173,19 +173,23 @@ impl<'a> Stringer {
                 self.advance();
             }
         } else {
-            for _ in 0..self.config.window_max_size {
+            for _ in 0..self.config.split {
                 if !self.should_read() || self.end {
                     break;
                 }
+
                 buff.push(self.byte);
                 self.advance();
             }
         }
 
         if buff.len() < self.config.window_min_size as usize {
-            if self.pos >= self.size - 1{
-                self.end = true;
-            }
+            return None;
+        }
+
+        // maximum window size limitation
+        if self.config.window_max_size != 0 && 
+           buff.len() as u64 > self.config.window_max_size {
             return None;
         }
 
@@ -233,5 +237,20 @@ impl<'a> Stringer {
             };
 
         }
+
+        match self.config.regex{
+            Some(ref r) => {
+                // this clone is gonna cost a lot.
+                let res: Vec<StringerResult> = 
+                    self.results
+                    .iter()
+                    .filter({ |x|  
+                        r.is_match(x.string.to_str().unwrap())
+                    }).cloned()
+                .collect();
+                self.results = res;
+            }
+            _ => {}
+        };
     }
 }
