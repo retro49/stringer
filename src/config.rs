@@ -10,15 +10,18 @@ const WINDOW_MIN_SIZE: u64 = 4;
 /// Default window maximum size config
 const WINDOW_MAX_SIZE: u64 = 0;
 /// Default special character config
-const SPECIAL_INCLUDE: bool = false;
+const SPECIAL_INCLUDE: bool = true;
 /// Default whitespace including config
-const WHITESPACE_INCLUDE: bool = false;
+const WHITESPACE_INCLUDE: bool = true;
 /// Default output format config
 const OUTPUTFORMAT: OutputFormat = OutputFormat::Literal;
 /// Default string length  output format config
 const LENGTH: bool = false;
 /// Default regex option
 const REGEX: Option<regex::Regex> = None;
+/// By default does not treats LF CR as a 
+/// valid character in the extraction process
+const LINE_INCLUDE: bool = false;
 
 /// StringerConfig
 /// This structure specifies the configuration
@@ -42,6 +45,8 @@ pub struct StringerConfig {
     pub length: bool,
     /// @regex: regex pattern for matching, optional.
     pub regex: Option<regex::Regex>,
+    /// @line_include: treats 0x0a LINE FEED, 0x0d CR as a string
+    pub line_include: bool,
 }
 
 impl Default for StringerConfig {
@@ -55,6 +60,7 @@ impl Default for StringerConfig {
             output_format: OUTPUTFORMAT,
             length: LENGTH,
             regex: REGEX,
+            line_include: LINE_INCLUDE,
         }
     }
 }
@@ -93,6 +99,11 @@ impl StringerConfig {
     /// enable length to be included in the output
     pub fn length_include(self: &mut Self, opt: bool) {
         self.length = opt;
+    }
+
+    /// makes LINE FEED AND CR to be treated as string
+    pub fn line_include(self: &mut Self, opt: bool) {
+        self.line_include = opt;
     }
 
     /// set regex expression
@@ -142,6 +153,11 @@ impl From<crate::args::Args> for StringerConfig {
         conf.length_include(match value.length {
             Some(l) => l,
             _ => LENGTH,
+        });
+
+        conf.line_include(match value.line_include {
+            Some(l) => { l },
+            None => LINE_INCLUDE
         });
 
         conf.output_format = match value.output_format {

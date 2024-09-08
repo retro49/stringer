@@ -2,7 +2,9 @@ pub mod args;
 pub mod config;
 pub mod error;
 
-use std::io::{self, Read};
+use std::io::Read;
+use serde::ser::{Serialize, Serializer, SerializeStruct};
+
 /// Stringer
 /// The main structure that is used to extract
 /// strings from a given stream according to the
@@ -16,8 +18,6 @@ pub struct Stringer {
     byte: u8,
     /// the position of the byte or the cursor
     pos: u64,
-    /// used for saving the current position of the buffer
-    save: u64,
     /// size of the input buffer
     size: u64,
     /// checks if the buffer is at the end or not
@@ -28,12 +28,41 @@ pub struct Stringer {
 
 /// A result type where the extracted string and length of
 /// the string is stored if needed
+// #[derive(Serialize, Deserialize, Debug)]
 #[derive(Debug)]
 pub struct StringerResult {
     /// the String that is extracted
     string: std::ffi::CString,
     /// size of the string if needed
     length: Option<u64>,
+}
+
+impl Serialize for StringerResult {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+        where
+            S: serde::Serializer {
+                let mut ss = serializer.serialize_struct("StringerResult", 2)?;
+                match self.length {
+                    Some(n) => {
+                        ss.serialize_field("length", &n)?;
+                    }
+                    _ => {}
+                };
+                ss.serialize_field("string", self.string.to_str().unwrap())?;
+                ss.end()
+    }
+}
+
+impl std::fmt::Display for StringerResult {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self.length {
+            Some(n) => {
+                let _ = f.write_fmt(format_args!("{}, ", n ));
+            }
+            None => {}
+        };
+        f.write_fmt(format_args!("{}", self.string.to_str().unwrap()))
+    }
 }
 
 impl<'a> Stringer {
@@ -69,7 +98,6 @@ impl<'a> Stringer {
             },
             buffer: buff,
             pos: 0,
-            save: 0,
             results: Vec::new(),
         })
     }
@@ -90,16 +118,6 @@ impl<'a> Stringer {
         self.byte = self.buffer[self.pos as usize];
     }
 
-    /// saves or stores the current position
-    fn save(self: &mut Self) {
-        self.save = self.pos;
-    }
-
-    /// restores the current position from save point
-    fn restore(self: &mut Self) {
-        self.pos = self.save;
-    }
-
     /// This function is responsible for chekcing
     /// if the current byte is acceptable or not according
     /// to the rule provided by the configuration.
@@ -108,17 +126,25 @@ impl<'a> Stringer {
                 return true;
         }
 
-        if !self.config.special &&  
+        if self.config.special &&  
             self.byte.is_ascii_punctuation() {
-                return false;
+                return true;
         }
 
-        if !self.config.whitespace_include && 
-            self.byte.is_ascii_whitespace()  {
-                return false;
+        if self.config.whitespace_include && 
+            (self.byte == 0x20 || 
+             self.byte == 0x09 || 
+             self.byte == 0x0b
+             ) 
+        {
+                return true;
         }
 
-        return true;
+        if self.config.line_include && (self.byte == 0x0a || self.byte == 0x0d) {
+            return true;
+        }
+
+        return false;
     }
 
     /// reads in and returns a buffer if the config condition
@@ -198,7 +224,6 @@ impl<'a> Stringer {
                     let res = self.to_stringer(buff);
                     match res {
                         Some(r) => {
-                            println!("{:?}", r);
                             self.results.push(r);
                         },
                         None => {continue;},

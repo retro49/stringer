@@ -13,6 +13,8 @@ pub struct Args {
     pub output_format: Option<String>,
     /// length option to be included in ouput
     pub length: Option<bool>,
+    /// line feed and CR
+    pub line_include: Option<bool>,
     /// regex option
     pub regex: Option<String>,
     /// output file
@@ -80,6 +82,14 @@ impl Args {
                     .value_parser(clap::value_parser!(bool)),
             )
             .arg(
+                clap::Arg::new("line")
+                .short('L')
+                .long("line")
+                .help("treats line feed and CR as printable characters")
+                .required(false)
+                .value_parser(clap::value_parser!(bool))
+            )
+            .arg(
                 clap::Arg::new("out")
                     .short('o')
                     .long("out")
@@ -120,6 +130,7 @@ impl Args {
                 _ => None,
             },
             length: cmd.get_one::<bool>("length").copied(),
+            line_include: cmd.get_one::<bool>("line").copied(),
             output: match cmd.get_one::<String>("out") {
                 Some(s) => Some(s.clone()),
                 _ => None,

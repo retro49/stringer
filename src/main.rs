@@ -14,7 +14,8 @@ fn stringer_file(path: String, conf: stringer::config::StringerConfig, _out: Opt
                     s.read_strings();
                     let res = s.results;
                     for r in res {
-                        println!("{:?}", r);
+                        let sr = serde_json::to_string(&r).unwrap();
+                        println!("{}", sr);
                     }
                 },
                 Err(_) => {
