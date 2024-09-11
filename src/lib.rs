@@ -1,6 +1,7 @@
 pub mod args;
 pub mod config;
 pub mod error;
+pub mod writer;
 
 use std::io::Read;
 use serde::ser::{Serialize, SerializeStruct};

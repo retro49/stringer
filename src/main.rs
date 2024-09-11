@@ -1,32 +1,52 @@
 extern crate stringer;
 
-fn stringer_file(path: String, conf: stringer::config::StringerConfig, out: Option<String>) {
+fn stringer_write(path: String, conf: stringer::config::StringerConfig, out: Option<String>) {
     let file = std::fs::File::open(path);
     match file {
-        Ok(f) => {
-            let mut file = f;
-            let strgr = 
-                stringer::Stringer::new(&mut file);
-            match strgr {
-                Ok(s) => {
-                    let mut s = s;
-                    s.set_config(conf);
-                    s.read_strings();
-                    let res = s.results;
-                    for r in res {
-                        let sr = serde_json::to_string(&r).unwrap();
-                        println!("{}", sr);
-                    }
-                },
-                Err(_) => {
-                    println!("unable to extract strings");
-                }
-            };
-        },
+        Ok(_) => {}
         Err(_) => {
-            println!("unable to open file")
+            println!("cannot open file");
+            return;
         },
     };
+
+    let mut file = file.unwrap();
+    let result = stringer::Stringer::new(&mut file);
+    match result {
+        Ok(mut r) => {
+            r.set_config(conf);
+            r.read_strings();
+            match out {
+                Some(p) => {
+                    let f = std::fs::File::create_new(p);
+                    match f {
+                        Ok(mut f) => {
+                            match stringer::writer::write(&mut f, &r.results) {
+                                Ok(_) => {}
+                                Err(_) => {
+                                    println!("unable to write data to file");
+                                }
+                            };
+                        }
+                        Err(_) => {}
+                    };
+                },
+                None => {
+                    let mut stdout = std::io::stdout();
+                    let _lock = stdout.lock();
+                    match stringer::writer::write(&mut stdout, &r.results) {
+                        Ok(_) => {}
+                        Err(_) => {
+                            println!("unable to write data");
+                        }
+                    };
+                    // drop(lock);
+                }
+            }
+        }
+        Err(_) => {}
+    }
+
 }
 
 fn main() {
@@ -47,7 +67,7 @@ fn main() {
             let conf = stringer::config::StringerConfig::from(arg);
             match input {
                 Some(i) => {
-                        stringer_file(i,  conf, output);
+                        stringer_write(i,  conf, output);
                 },
                 None  => {}
             };
